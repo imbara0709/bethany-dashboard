@@ -23,6 +23,7 @@ model User {
   assignedTasks    Task[]         @relation("TaskAssignee")
   assignedByTasks  Task[]         @relation("TaskAssigner")
   notifications    Notification[]
+  createdMeetings  Meeting[]      @relation("MeetingCreator")
 
   @@map("users")
 }
