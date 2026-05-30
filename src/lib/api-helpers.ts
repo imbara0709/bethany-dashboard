@@ -32,7 +32,19 @@ export function handleError(err: unknown): NextResponse<ApiResponse<null>> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return fail((err as any).errors?.[0]?.message ?? "입력값 오류", 400);
   }
-  console.error(err);
+  // Prisma known request errors (P2002: unique, P2003: FK)
+  if (err && typeof err === "object" && "code" in err) {
+    const code = (err as { code?: string }).code;
+    if (code === "P2003") {
+      console.error("[Prisma P2003 FK constraint]", err);
+      return fail("참조하는 데이터가 존재하지 않습니다", 400);
+    }
+    if (code === "P2002") {
+      console.error("[Prisma P2002 unique constraint]", err);
+      return fail("이미 존재하는 데이터입니다", 409);
+    }
+  }
+  console.error("[API Error]", err);
   return fail("서버 내부 오류", 500);
 }
 

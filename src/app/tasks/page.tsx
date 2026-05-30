@@ -59,6 +59,8 @@ export default function TasksPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks-all"] }),
   });
 
+  const VALID_ROLES = ["PASTOR", "TRAINEE", "FULLTIME", "PARTTIME", "ADMIN"];
+
   // ── 조건부 return ────────────────────────────────────────────────────────────
   if (status === "loading") return <div className="min-h-screen flex items-center justify-center text-gray-500">로딩 중...</div>;
   if (!session) redirect("/login");
@@ -67,7 +69,7 @@ export default function TasksPage() {
   const canCreate = userRole ? hasMinRole(userRole, "DEACON") : false;
   const todayYMD  = toYMD(new Date());
 
-  const activeMembers = members.filter((m) => m.isActive);
+  const activeMembers = members.filter((m) => m.isActive && VALID_ROLES.includes(m.role));
   const tasksByMember = (memberId: string) =>
     tasks.filter((t) =>
       t.assignedTo.id === memberId &&
@@ -80,10 +82,6 @@ export default function TasksPage() {
 
   const totalByStatus = (s: TaskStatus) => tasks.filter((t) => t.status === s).length;
   const overdueCount  = tasks.filter(isOverdue).length;
-
-  const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
-    TODO: "IN_PROGRESS", IN_PROGRESS: "REVIEW", REVIEW: "DONE", DONE: "TODO",
-  };
 
   return (
     <Layout>
@@ -173,20 +171,16 @@ export default function TasksPage() {
                         : null;
                       return (
                         <div key={t.id} className="px-4 py-3 flex items-start gap-2.5 group hover:bg-gray-50 transition-colors">
-                          {/* 상태 버튼 */}
-                          <button
-                            onClick={() => updateStatus.mutate({ id: t.id, s: STATUS_CYCLE[t.status as TaskStatus] })}
-                            title="클릭하여 상태 변경"
-                            className={`mt-1 w-4 h-4 rounded-full flex-shrink-0 border-2 transition-transform hover:scale-110 ${
-                              t.status === "DONE"
-                                ? "bg-emerald-400 border-emerald-400"
-                                : t.status === "IN_PROGRESS"
-                                ? "bg-amber-400 border-amber-400"
-                                : t.status === "REVIEW"
-                                ? "bg-indigo-400 border-indigo-400"
-                                : "bg-white border-gray-300 hover:border-gray-400"
-                            }`}
-                          />
+                          {/* 상태 표시 점 */}
+                          <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${
+                            t.status === "DONE"
+                              ? "bg-emerald-400"
+                              : t.status === "IN_PROGRESS"
+                              ? "bg-amber-400"
+                              : t.status === "REVIEW"
+                              ? "bg-indigo-400"
+                              : "bg-gray-300"
+                          }`} />
                           {/* 업무 내용 */}
                           <div className="flex-1 min-w-0">
                             <div className={`text-sm font-medium truncate ${t.status === "DONE" ? "line-through text-gray-400" : "text-gray-800"}`}>
@@ -196,9 +190,16 @@ export default function TasksPage() {
                               <div className="text-xs text-gray-400 truncate mt-0.5">{t.description}</div>
                             )}
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${STATUS_BADGE[t.status as TaskStatus]}`}>
-                                {TASK_STATUS_LABELS[t.status as TaskStatus]}
-                              </span>
+                              {/* 상태 선택 드롭다운 */}
+                              <select
+                                value={t.status}
+                                onChange={(e) => updateStatus.mutate({ id: t.id, s: e.target.value as TaskStatus })}
+                                className={`text-xs px-1.5 py-0.5 rounded border font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 ${STATUS_BADGE[t.status as TaskStatus]}`}
+                              >
+                                {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
+                                  <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
+                                ))}
+                              </select>
                               {deadlineStr && (
                                 <span className={`text-xs flex items-center gap-0.5 ${
                                   overdue ? "text-red-500 font-semibold" :

@@ -99,6 +99,13 @@ export async function POST_tasks(req: NextRequest) {
     });
     if (!assignee) return fail("사역자를 찾을 수 없습니다", 404);
 
+    if (body.scheduleId) {
+      const schedule = await prisma.schedule.findUnique({
+        where: { id: body.scheduleId },
+      });
+      if (!schedule) return fail("일정을 찾을 수 없습니다", 404);
+    }
+
     const task = await prisma.task.create({
       data: {
         title: body.title,
@@ -189,7 +196,7 @@ export async function PATCH_task(
 
     const task = await prisma.task.findUnique({
       where: { id: params.id },
-      select: { id: true, title: true, assignedToId: true, assignedById: true },
+      select: { id: true, title: true, assignedToId: true, assignedById: true, status: true },
     });
     if (!task) return fail("업무를 찾을 수 없습니다", 404);
 
@@ -229,6 +236,30 @@ export async function PATCH_task(
         body.assignedToId,
         `업무 "${updated.title}"이 배정되었습니다.`
       );
+    }
+
+    // REVIEW 상태로 변경 시 배분자(assignedBy)에게 알림
+    if (body.status === "REVIEW" && task.status !== "REVIEW") {
+      // 배분자에게 알림 (본인이 배분한 경우 제외하여 중복 방지는 안 함 - 항상 알림)
+      if (task.assignedById !== user.id) {
+        await createNotification(
+          task.assignedById,
+          `"${updated.title}" 업무가 확인 요청되었습니다. (담당: ${user.name})`
+        );
+      }
+      // PASTOR 역할 사용자들에게도 알림 (배분자가 이미 PASTOR인 경우 중복 방지)
+      const pastors = await prisma.user.findMany({
+        where: { role: "PASTOR", isActive: true },
+        select: { id: true },
+      });
+      for (const pastor of pastors) {
+        if (pastor.id !== task.assignedById && pastor.id !== user.id) {
+          await createNotification(
+            pastor.id,
+            `"${updated.title}" 업무가 확인 요청되었습니다. (담당: ${user.name})`
+          );
+        }
+      }
     }
 
     return ok({

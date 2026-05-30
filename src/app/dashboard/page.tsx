@@ -2,15 +2,16 @@
 import { useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import ScheduleFormModal from "@/components/ScheduleFormModal";
+import TaskFormModal from "@/components/TaskFormModal";
 import {
   Schedule, ScheduleType,
   SCHEDULE_TYPE_LABELS, SCHEDULE_TYPE_COLORS, SCHEDULE_TYPE_BAR,
-  Role,
+  Role, Task, TaskStatus, TASK_STATUS_LABELS,
 } from "@/types";
-import { schedulesApi, homeApi } from "@/lib/api";
+import { schedulesApi, homeApi, tasksApi } from "@/lib/api";
 import Link from "next/link";
 
 type ViewMode = "week" | "month";
@@ -143,14 +144,24 @@ function MonthCalendar({
 }
 
 // ── 메인 페이지 ───────────────────────────────────────────────────────────────
+const TASK_STATUS_DOT: Record<TaskStatus, string> = {
+  TODO:        "bg-gray-300",
+  IN_PROGRESS: "bg-amber-400",
+  REVIEW:      "bg-indigo-400",
+  DONE:        "bg-emerald-400",
+};
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const qc = useQueryClient();
   const [viewMode,     setViewMode]     = useState<ViewMode>("week");
   const [baseDate,     setBaseDate]     = useState(new Date());
   const [showForm,     setShowForm]     = useState(false);
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
   const [clickedDate,  setClickedDate]  = useState<string | null>(null);
   const [filterType,   setFilterType]   = useState<ScheduleType | "">("");
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editTask,     setEditTask]     = useState<Task | null>(null);
 
   const { start, end } = getWeekRange(baseDate);
   const crossMonth = end.getMonth() !== start.getMonth();
@@ -176,6 +187,21 @@ export default function DashboardPage() {
     queryKey: ["home-summary"],
     queryFn: async () => (await homeApi.summary()).data,
     enabled: !!session,
+  });
+
+  // 내 업무
+  const { data: myTasks = [] } = useQuery({
+    queryKey: ["my-tasks"],
+    queryFn: async () => (await tasksApi.list({ mine: true })).data as Task[] ?? [],
+    enabled: !!session,
+  });
+
+  const updateMyTaskStatus = useMutation({
+    mutationFn: ({ id, s }: { id: string; s: TaskStatus }) => tasksApi.update(id, { status: s }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["home-summary"] });
+    },
   });
 
   // 월간 데이터
@@ -456,6 +482,94 @@ export default function DashboardPage() {
             schedule={editSchedule??undefined}
             defaultDate={clickedDate??undefined}
             onClose={() => { setShowForm(false); setEditSchedule(null); setClickedDate(null); refetch(); }}
+          />
+        )}
+
+        {/* ── 내 업무 ───────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-[#E5E8EB] shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#F2F4F6]">
+            <h3 className="text-sm font-semibold text-gray-800">내 업무</h3>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setEditTask(null); setShowTaskForm(true); }}
+                className="flex items-center gap-1 text-xs text-[#3182F6] font-medium hover:text-[#1B64DA]"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                업무 추가
+              </button>
+              <Link href="/tasks" className="text-xs text-gray-400 hover:text-gray-600">
+                모두 보기 →
+              </Link>
+            </div>
+          </div>
+
+          {myTasks.filter((t) => t.status !== "DONE").length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-gray-400">
+              진행 중인 업무가 없습니다
+              <button
+                onClick={() => { setEditTask(null); setShowTaskForm(true); }}
+                className="block mx-auto mt-2 text-xs text-[#3182F6] hover:underline"
+              >
+                + 업무 추가하기
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {myTasks
+                .filter((t) => t.status !== "DONE")
+                .sort((a, b) => {
+                  const ord: Record<TaskStatus, number> = { IN_PROGRESS: 0, REVIEW: 1, TODO: 2, DONE: 3 };
+                  return ord[a.status as TaskStatus] - ord[b.status as TaskStatus];
+                })
+                .slice(0, 6)
+                .map((t) => {
+                  const isOverdueTask = t.deadline && new Date(t.deadline) < new Date();
+                  return (
+                    <div key={t.id} className="px-5 py-3 flex items-center gap-3 group hover:bg-gray-50">
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${TASK_STATUS_DOT[t.status as TaskStatus]}`} />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-gray-800 truncate block">{t.title}</span>
+                        {t.deadline && (
+                          <span className={`text-xs ${isOverdueTask ? "text-red-500" : "text-gray-400"}`}>
+                            {isOverdueTask && "⚠ "}~{t.deadline.slice(5, 10)}
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        value={t.status}
+                        onChange={(e) => updateMyTaskStatus.mutate({ id: t.id, s: e.target.value as TaskStatus })}
+                        className="text-xs border border-[#E5E8EB] rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#3182F6] cursor-pointer"
+                      >
+                        {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
+                          <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => { setEditTask(t); setShowTaskForm(true); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+
+        {showTaskForm && (
+          <TaskFormModal
+            task={editTask ?? undefined}
+            onClose={() => {
+              setShowTaskForm(false);
+              setEditTask(null);
+              qc.invalidateQueries({ queryKey: ["my-tasks"] });
+              qc.invalidateQueries({ queryKey: ["home-summary"] });
+            }}
           />
         )}
       </div>
