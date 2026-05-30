@@ -42,7 +42,25 @@ export async function GET_schedules(req: NextRequest) {
     if (year && month) {
       const start = new Date(Number(year), Number(month) - 1, 1);
       const end = new Date(Number(year), Number(month), 0);
-      dateFilter = { date: { gte: start, lte: end } };
+      // 해당 월과 겹치는 일정 모두 포함:
+      // 일정이 월의 끝일 이전에 시작하고, 종료일이 없으면 시작일이 월 시작 이후이거나
+      // 종료일이 월 시작일 이후인 경우
+      dateFilter = {
+        AND: [
+          { date: { lte: end } },
+          {
+            OR: [
+              { endDate: { gte: start } },
+              {
+                AND: [
+                  { endDate: null },
+                  { date: { gte: start } },
+                ],
+              },
+            ],
+          },
+        ],
+      };
     }
 
     const schedules = await prisma.schedule.findMany({

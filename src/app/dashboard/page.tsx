@@ -343,138 +343,277 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* 주간 뷰 */}
+        {/* 주간 뷰 - 스플릿 레이아웃 */}
         {viewMode === "week" && (
-          <>
-            <div className="bg-white rounded-2xl border border-[#E5E8EB] overflow-hidden shadow-sm">
-              <div className="grid grid-cols-7 border-b border-[#F2F4F6]">
-                {weekDays.map((day,i) => {
-                  const isToday = toYMD(day)===todayYMD;
-                  return (
-                    <div key={i} className={`py-3 text-center border-r border-gray-50 last:border-r-0 ${isToday?"bg-[#EBF2FE]":""}`}>
-                      <div className={`text-xs font-semibold tracking-wide ${WD_COLORS[i]}`}>{WD_KO[i]}</div>
-                      <div className={`mt-1 mx-auto w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold ${isToday?"bg-[#3182F6] text-white":WD_COLORS[i]}`}>
-                        {day.getDate()}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* 좌측 2/3: 주간 달력 + 이번주 일정 목록 */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="bg-white rounded-2xl border border-[#E5E8EB] overflow-hidden shadow-sm">
+                <div className="grid grid-cols-7 border-b border-[#F2F4F6]">
+                  {weekDays.map((day,i) => {
+                    const isToday = toYMD(day)===todayYMD;
+                    return (
+                      <div key={i} className={`py-2 text-center border-r border-gray-50 last:border-r-0 ${isToday?"bg-[#EBF2FE]":""}`}>
+                        <div className={`text-[10px] font-semibold tracking-wide ${WD_COLORS[i]}`}>{WD_KO[i]}</div>
+                        <div className={`mt-0.5 mx-auto w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${isToday?"bg-[#3182F6] text-white":WD_COLORS[i]}`}>
+                          {day.getDate()}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-7 min-h-[180px]">
-                {weekDays.map((day,i) => {
-                  const isToday = toYMD(day)===todayYMD;
-                  const daySched = schedulesForDay(day);
-                  return (
-                    <div key={i}
-                      onClick={() => { if(!canCreate) return; setEditSchedule(null); setClickedDate(toYMD(day)); setShowForm(true); }}
-                      className={`p-1.5 border-r border-gray-50 last:border-r-0 ${isToday?"bg-[#EBF2FE]/30":""} ${canCreate?"cursor-pointer hover:bg-[#F7F8FA]/80":""}`}>
-                      <div className="space-y-0.5">
-                        {daySched.map((s) => {
-                          const multi = s.endDate && s.endDate.slice(0,10)!==s.date.slice(0,10);
-                          return (
-                            <button key={s.id}
-                              onClick={(e) => { e.stopPropagation(); if(s.createdById===userId||isAdmin){setEditSchedule(s);setShowForm(true);} }}
-                              className={`w-full text-left text-xs px-1.5 py-1 rounded-md border transition-opacity hover:opacity-80 ${SCHEDULE_TYPE_COLORS[s.type as ScheduleType] ?? "bg-gray-100 text-gray-700 border-[#E5E8EB]"}`}>
-                              <div className="font-semibold truncate flex items-center gap-0.5">
-                                {multi && <span className="opacity-60">↔</span>}
-                                {s.title}
-                              </div>
-                              <div className="opacity-70 text-[10px] truncate">
-                                {SCHEDULE_TYPE_LABELS[s.type as ScheduleType] ?? s.type}
-                                {s.startTime && ` · ${s.startTime}`}
-                                {multi && s.endDate && ` ~ ${s.endDate.slice(5,10)}`}
-                              </div>
-                            </button>
-                          );
-                        })}
-                        {daySched.length===0 && canCreate && (
-                          <div className="min-h-[120px] flex items-end justify-center pb-2">
-                            <span className="text-xs text-gray-200">+</span>
-                          </div>
-                        )}
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-7 min-h-[150px]">
+                  {weekDays.map((day,i) => {
+                    const isToday = toYMD(day)===todayYMD;
+                    const daySched = schedulesForDay(day);
+                    return (
+                      <div key={i}
+                        onClick={() => { if(!canCreate) return; setEditSchedule(null); setClickedDate(toYMD(day)); setShowForm(true); }}
+                        className={`p-1 border-r border-gray-50 last:border-r-0 ${isToday?"bg-[#EBF2FE]/30":""} ${canCreate?"cursor-pointer hover:bg-[#F7F8FA]/80":""}`}>
+                        <div className="space-y-0.5">
+                          {daySched.map((s) => {
+                            const multi = s.endDate && s.endDate.slice(0,10)!==s.date.slice(0,10);
+                            return (
+                              <button key={s.id}
+                                onClick={(e) => { e.stopPropagation(); if(s.createdById===userId||isAdmin){setEditSchedule(s);setShowForm(true);} }}
+                                className={`w-full text-left text-[10px] px-1 py-0.5 rounded border transition-opacity hover:opacity-80 ${SCHEDULE_TYPE_COLORS[s.type as ScheduleType] ?? "bg-gray-100 text-gray-700 border-[#E5E8EB]"}`}>
+                                <div className="font-semibold truncate flex items-center gap-0.5">
+                                  {multi && <span className="opacity-60">↔</span>}
+                                  {s.title}
+                                </div>
+                                {s.startTime && (
+                                  <div className="opacity-70 text-[10px] truncate">
+                                    {s.startTime}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
+
+              {/* 이번 주 일정 - 단순 리스트 */}
+              {(() => {
+                const weekSchedules = allSchedules
+                  .filter((s) => !filterType || s.type === filterType)
+                  .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime ?? "").localeCompare(b.startTime ?? ""));
+                if (weekSchedules.length === 0) return null;
+                return (
+                  <div className="bg-white rounded-2xl border border-[#E5E8EB] shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-[#F2F4F6]">
+                      <h3 className="text-sm font-bold text-gray-700">
+                        이번 주 일정 <span className="text-gray-400 font-normal ml-1">({weekSchedules.length}건)</span>
+                      </h3>
+                    </div>
+                    <ul className="divide-y divide-gray-50">
+                      {weekSchedules.map((s) => {
+                        const color    = SCHEDULE_TYPE_COLORS[s.type as ScheduleType] ?? "bg-gray-100 text-gray-700 border-[#E5E8EB]";
+                        const barColor = SCHEDULE_TYPE_BAR[s.type as ScheduleType]    ?? "bg-gray-300";
+                        const isMulti = s.endDate && s.endDate.slice(0,10) !== s.date.slice(0,10);
+                        return (
+                          <li key={s.id}
+                            onClick={() => { if (s.createdById === userId || isAdmin) { setEditSchedule(s); setShowForm(true); } }}
+                            className="flex items-stretch gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                            <div className={`w-1 rounded-full flex-shrink-0 ${barColor}`} />
+                            <div className="flex-shrink-0 w-12 text-center">
+                              <div className="text-[10px] text-gray-400 font-medium">{WD_KO[(new Date(s.date).getDay() + 6) % 7]}</div>
+                              <div className="text-sm font-bold text-gray-700">{s.date.slice(8,10)}</div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-medium ${color}`}>
+                                  {SCHEDULE_TYPE_LABELS[s.type as ScheduleType]}
+                                </span>
+                                <span className="font-semibold text-sm text-gray-900 truncate">{s.title}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {s.startTime && <span>{s.startTime}{s.endTime && ` ~ ${s.endTime}`}</span>}
+                                {isMulti && s.endDate && <span>{s.startTime && " · "}~ {s.endDate.slice(5,10).replace("-","/")}</span>}
+                                {s.location && <span>{(s.startTime || isMulti) && " · "}{s.location}</span>}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* 이번 주 일정 카드 목록 */}
-            {(() => {
-              const weekSchedules = allSchedules
-                .filter((s) => !filterType || s.type === filterType)
-                .sort((a, b) => a.date.localeCompare(b.date));
-              if (weekSchedules.length === 0) return null;
-              return (
-                <div>
-                  <h3 className="text-sm font-bold text-gray-700 mb-3">
-                    이번 주 일정 <span className="text-gray-400 font-normal ml-1">({weekSchedules.length}건)</span>
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {weekSchedules.map((s) => {
-                      const color    = SCHEDULE_TYPE_COLORS[s.type as ScheduleType] ?? "bg-gray-100 text-gray-700 border-[#E5E8EB]";
-                      const barColor = SCHEDULE_TYPE_BAR[s.type as ScheduleType]    ?? "bg-gray-300";
-                      const isMulti = s.endDate && s.endDate.slice(0,10) !== s.date.slice(0,10);
-                      return (
-                        <div key={s.id}
-                          className="bg-white rounded-xl border border-[#E5E8EB] overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => { if (s.createdById === userId || isAdmin) { setEditSchedule(s); setShowForm(true); } }}>
-                          <div className={`h-1.5 ${barColor}`} />
-                          <div className="p-4 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${color}`}>
-                                {SCHEDULE_TYPE_LABELS[s.type as ScheduleType]}
-                              </span>
-                            </div>
-                            <div className="font-semibold text-sm text-gray-900 leading-snug">{s.title}</div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <span>
-                                {s.date.slice(5,10).replace("-","/")}
-                                {isMulti && s.endDate && ` ~ ${s.endDate.slice(5,10).replace("-","/")} `}
-                                {s.startTime && ` · ${s.startTime}`}
-                                {s.endTime && ` ~ ${s.endTime}`}
-                              </span>
-                            </div>
-                            {s.location && (
-                              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span className="truncate">{s.location}</span>
-                              </div>
-                            )}
-                            {s.description && (
-                              <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{s.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+            {/* 우측 1/3: 내 업무 패널 */}
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-4 bg-white rounded-2xl border border-[#E5E8EB] shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#F2F4F6]">
+                  <h3 className="text-sm font-semibold text-gray-800">내 업무</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setEditTask(null); setShowTaskForm(true); }}
+                      className="flex items-center gap-1 text-xs text-[#3182F6] font-medium hover:text-[#1B64DA]"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      추가
+                    </button>
+                    <Link href="/tasks" className="text-xs text-gray-400 hover:text-gray-600">
+                      모두 →
+                    </Link>
                   </div>
                 </div>
-              );
-            })()}
-          </>
+
+                {myTasks.filter((t) => t.status !== "DONE").length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-gray-400">
+                    진행 중인 업무가 없습니다
+                    <button
+                      onClick={() => { setEditTask(null); setShowTaskForm(true); }}
+                      className="block mx-auto mt-2 text-xs text-[#3182F6] hover:underline"
+                    >
+                      + 업무 추가하기
+                    </button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
+                    {myTasks
+                      .filter((t) => t.status !== "DONE")
+                      .sort((a, b) => {
+                        const ord: Record<TaskStatus, number> = { IN_PROGRESS: 0, REVIEW: 1, TODO: 2, DONE: 3 };
+                        return ord[a.status as TaskStatus] - ord[b.status as TaskStatus];
+                      })
+                      .map((t) => {
+                        const isOverdueTask = t.deadline && new Date(t.deadline) < new Date();
+                        return (
+                          <div key={t.id} className="px-4 py-3 group hover:bg-gray-50">
+                            <div className="flex items-start gap-2 mb-1.5">
+                              <div className={`w-2.5 h-2.5 mt-1 rounded-full flex-shrink-0 ${TASK_STATUS_DOT[t.status as TaskStatus]}`} />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm text-gray-800 break-words block">{t.title}</span>
+                                {t.deadline && (
+                                  <span className={`text-xs ${isOverdueTask ? "text-red-500" : "text-gray-400"}`}>
+                                    {isOverdueTask && "⚠ "}~{t.deadline.slice(5, 10)}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => { setEditTask(t); setShowTaskForm(true); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            </div>
+                            <select
+                              value={t.status}
+                              onChange={(e) => updateMyTaskStatus.mutate({ id: t.id, s: e.target.value as TaskStatus })}
+                              className="w-full text-xs border border-[#E5E8EB] rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#3182F6] cursor-pointer"
+                            >
+                              {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
+                                <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* 월간 뷰 */}
         {viewMode === "month" && (
-          <MonthCalendar
-            year={monthYear}
-            month={monthMonth}
-            schedules={monthSchedules}
-            filterType={filterType}
-            todayYMD={todayYMD}
-            canCreate={canCreate}
-            isAdmin={isAdmin}
-            userId={userId}
-            onAddClick={(date) => { setEditSchedule(null); setClickedDate(date); setShowForm(true); }}
-            onEditClick={(s) => { setEditSchedule(s); setShowForm(true); }}
-          />
+          <div className="space-y-4">
+            <MonthCalendar
+              year={monthYear}
+              month={monthMonth}
+              schedules={monthSchedules}
+              filterType={filterType}
+              todayYMD={todayYMD}
+              canCreate={canCreate}
+              isAdmin={isAdmin}
+              userId={userId}
+              onAddClick={(date) => { setEditSchedule(null); setClickedDate(date); setShowForm(true); }}
+              onEditClick={(s) => { setEditSchedule(s); setShowForm(true); }}
+            />
+
+            {/* 해당 월 일별 일정 목록 */}
+            {(() => {
+              const filtered = monthSchedules
+                .filter((s) => !filterType || s.type === filterType)
+                .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime ?? "").localeCompare(b.startTime ?? ""));
+              if (filtered.length === 0) {
+                return (
+                  <div className="bg-white rounded-2xl border border-[#E5E8EB] shadow-sm p-8 text-center text-sm text-gray-400">
+                    이번 달 등록된 일정이 없습니다
+                  </div>
+                );
+              }
+              const grouped: Record<string, Schedule[]> = {};
+              for (const s of filtered) {
+                const dateKey = s.date.slice(0, 10);
+                if (!grouped[dateKey]) grouped[dateKey] = [];
+                grouped[dateKey].push(s);
+              }
+              const sortedKeys = Object.keys(grouped).sort();
+              return (
+                <div className="bg-white rounded-2xl border border-[#E5E8EB] shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#F2F4F6]">
+                    <h3 className="text-sm font-bold text-gray-700">
+                      {monthMonth + 1}월 일정 <span className="text-gray-400 font-normal ml-1">({filtered.length}건)</span>
+                    </h3>
+                  </div>
+                  <ul className="divide-y divide-gray-100">
+                    {sortedKeys.map((dateKey) => {
+                      const dateObj = new Date(dateKey);
+                      const wdIdx = (dateObj.getDay() + 6) % 7;
+                      const isToday = dateKey === todayYMD;
+                      return (
+                        <li key={dateKey} className="flex">
+                          <div className={`flex-shrink-0 w-16 py-3 px-3 text-center border-r border-gray-50 ${isToday ? "bg-[#EBF2FE]/40" : "bg-gray-50/40"}`}>
+                            <div className={`text-[10px] font-medium ${WD_COLORS[wdIdx]}`}>{WD_KO[wdIdx]}</div>
+                            <div className={`text-lg font-bold ${isToday ? "text-[#3182F6]" : "text-gray-700"}`}>{dateObj.getDate()}</div>
+                          </div>
+                          <ul className="flex-1 divide-y divide-gray-50">
+                            {grouped[dateKey].map((s) => {
+                              const color    = SCHEDULE_TYPE_COLORS[s.type as ScheduleType] ?? "bg-gray-100 text-gray-700 border-[#E5E8EB]";
+                              const barColor = SCHEDULE_TYPE_BAR[s.type as ScheduleType]    ?? "bg-gray-300";
+                              const isMulti = s.endDate && s.endDate.slice(0,10) !== s.date.slice(0,10);
+                              return (
+                                <li key={s.id}
+                                  onClick={() => { if (s.createdById === userId || isAdmin) { setEditSchedule(s); setShowForm(true); } }}
+                                  className="flex items-stretch gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                                  <div className={`w-1 rounded-full flex-shrink-0 ${barColor}`} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border font-medium ${color}`}>
+                                        {SCHEDULE_TYPE_LABELS[s.type as ScheduleType]}
+                                      </span>
+                                      <span className="font-semibold text-sm text-gray-900 truncate">{s.title}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500 truncate">
+                                      {s.startTime && <span>{s.startTime}{s.endTime && ` ~ ${s.endTime}`}</span>}
+                                      {isMulti && s.endDate && <span>{s.startTime && " · "}~ {s.endDate.slice(5,10).replace("-","/")}</span>}
+                                      {s.location && <span>{(s.startTime || isMulti) && " · "}{s.location}</span>}
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })()}
+          </div>
         )}
 
         {showForm && (
@@ -484,82 +623,6 @@ export default function DashboardPage() {
             onClose={() => { setShowForm(false); setEditSchedule(null); setClickedDate(null); refetch(); }}
           />
         )}
-
-        {/* ── 내 업무 ───────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-[#E5E8EB] shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[#F2F4F6]">
-            <h3 className="text-sm font-semibold text-gray-800">내 업무</h3>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => { setEditTask(null); setShowTaskForm(true); }}
-                className="flex items-center gap-1 text-xs text-[#3182F6] font-medium hover:text-[#1B64DA]"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                업무 추가
-              </button>
-              <Link href="/tasks" className="text-xs text-gray-400 hover:text-gray-600">
-                모두 보기 →
-              </Link>
-            </div>
-          </div>
-
-          {myTasks.filter((t) => t.status !== "DONE").length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-gray-400">
-              진행 중인 업무가 없습니다
-              <button
-                onClick={() => { setEditTask(null); setShowTaskForm(true); }}
-                className="block mx-auto mt-2 text-xs text-[#3182F6] hover:underline"
-              >
-                + 업무 추가하기
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {myTasks
-                .filter((t) => t.status !== "DONE")
-                .sort((a, b) => {
-                  const ord: Record<TaskStatus, number> = { IN_PROGRESS: 0, REVIEW: 1, TODO: 2, DONE: 3 };
-                  return ord[a.status as TaskStatus] - ord[b.status as TaskStatus];
-                })
-                .slice(0, 6)
-                .map((t) => {
-                  const isOverdueTask = t.deadline && new Date(t.deadline) < new Date();
-                  return (
-                    <div key={t.id} className="px-5 py-3 flex items-center gap-3 group hover:bg-gray-50">
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${TASK_STATUS_DOT[t.status as TaskStatus]}`} />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm text-gray-800 truncate block">{t.title}</span>
-                        {t.deadline && (
-                          <span className={`text-xs ${isOverdueTask ? "text-red-500" : "text-gray-400"}`}>
-                            {isOverdueTask && "⚠ "}~{t.deadline.slice(5, 10)}
-                          </span>
-                        )}
-                      </div>
-                      <select
-                        value={t.status}
-                        onChange={(e) => updateMyTaskStatus.mutate({ id: t.id, s: e.target.value as TaskStatus })}
-                        className="text-xs border border-[#E5E8EB] rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#3182F6] cursor-pointer"
-                      >
-                        {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
-                          <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => { setEditTask(t); setShowTaskForm(true); }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
 
         {showTaskForm && (
           <TaskFormModal

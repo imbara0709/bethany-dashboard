@@ -65,9 +65,10 @@ export default function TasksPage() {
   if (status === "loading") return <div className="min-h-screen flex items-center justify-center text-gray-500">로딩 중...</div>;
   if (!session) redirect("/login");
 
-  const userRole  = session.user?.role as Role | undefined;
-  const canCreate = userRole ? hasMinRole(userRole, "DEACON") : false;
-  const todayYMD  = toYMD(new Date());
+  const userRole    = session.user?.role as Role | undefined;
+  const currentUserId = session.user?.id as string | undefined;
+  const canManageAll = userRole ? hasMinRole(userRole, "PASTOR") : false;
+  const todayYMD    = toYMD(new Date());
 
   const activeMembers = members.filter((m) => m.isActive && VALID_ROLES.includes(m.role));
   const tasksByMember = (memberId: string) =>
@@ -99,7 +100,7 @@ export default function TasksPage() {
               {overdueCount > 0 && <span className="text-red-500 font-semibold">⚠ 지연 {overdueCount}</span>}
             </div>
           </div>
-          {canCreate && (
+          {canManageAll && (
             <button onClick={() => { setEditTask(null); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3182F6] text-white rounded-lg text-sm font-medium hover:bg-[#1B64DA]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
@@ -190,16 +191,22 @@ export default function TasksPage() {
                               <div className="text-xs text-gray-400 truncate mt-0.5">{t.description}</div>
                             )}
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              {/* 상태 선택 드롭다운 */}
-                              <select
-                                value={t.status}
-                                onChange={(e) => updateStatus.mutate({ id: t.id, s: e.target.value as TaskStatus })}
-                                className={`text-xs px-1.5 py-0.5 rounded border font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 ${STATUS_BADGE[t.status as TaskStatus]}`}
-                              >
-                                {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
-                                  <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
-                                ))}
-                              </select>
+                              {/* 상태 선택: 본인 담당 또는 관리자만 변경 가능 */}
+                              {(canManageAll || t.assignedTo.id === currentUserId) ? (
+                                <select
+                                  value={t.status}
+                                  onChange={(e) => updateStatus.mutate({ id: t.id, s: e.target.value as TaskStatus })}
+                                  className={`text-xs px-1.5 py-0.5 rounded border font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 ${STATUS_BADGE[t.status as TaskStatus]}`}
+                                >
+                                  {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
+                                    <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${STATUS_BADGE[t.status as TaskStatus]}`}>
+                                  {TASK_STATUS_LABELS[t.status as TaskStatus]}
+                                </span>
+                              )}
                               {deadlineStr && (
                                 <span className={`text-xs flex items-center gap-0.5 ${
                                   overdue ? "text-red-500 font-semibold" :
@@ -215,8 +222,8 @@ export default function TasksPage() {
                               )}
                             </div>
                           </div>
-                          {/* 수정 버튼 (hover 시 표시) */}
-                          {canCreate && (
+                          {/* 수정 버튼: 관리자 또는 본인 담당 업무만 */}
+                          {canManageAll && (
                             <button
                               onClick={() => { setEditTask(t); setShowForm(true); }}
                               className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 flex-shrink-0 mt-0.5"
@@ -231,8 +238,8 @@ export default function TasksPage() {
                     })}
                   </div>
 
-                  {/* 하단: 업무 추가 버튼 */}
-                  {canCreate && (
+                  {/* 하단: 관리자만 타인에게 업무 추가 가능 */}
+                  {canManageAll && (
                     <div className="px-4 py-2 border-t border-gray-50 bg-gray-50/50">
                       <button
                         onClick={() => { setEditTask(null); setShowForm(true); }}

@@ -227,7 +227,7 @@ export default function RequestDetailModal({ requestId, onClose, onEdit }: Props
                   <div className="space-y-4">
                     {req.activities.map((act) => {
                       let detail = act.detail;
-                      try { if (detail) detail = JSON.parse(detail).text ?? detail; } catch { /* keep as is */ }
+                      try { if (detail) detail = JSON.parse(detail).text ?? null; } catch { /* keep as is */ }
                       return (
                         <div key={act.id} className="flex items-start gap-3">
                           <ActionDot action={act.action} />
