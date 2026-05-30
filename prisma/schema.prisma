@@ -15,15 +15,19 @@ model User {
   phone     String?
   role      String   @default("MEMBER")
   team      String?
+  avatar    String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  createdSchedules Schedule[]     @relation("ScheduleCreator")
-  assignedTasks    Task[]         @relation("TaskAssignee")
-  assignedByTasks  Task[]         @relation("TaskAssigner")
-  notifications    Notification[]
-  createdMeetings  Meeting[]      @relation("MeetingCreator")
+  createdSchedules  Schedule[]        @relation("ScheduleCreator")
+  assignedTasks     Task[]            @relation("TaskAssignee")
+  assignedByTasks   Task[]            @relation("TaskAssigner")
+  notifications     Notification[]
+  createdMeetings   Meeting[]         @relation("MeetingCreator")
+  sentRequests      Request[]         @relation("RequestRequester")
+  receivedRequests  Request[]         @relation("RequestAssignee")
+  requestActivities RequestActivity[]
 
   @@map("users")
 }
@@ -43,7 +47,8 @@ model Schedule {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  tasks Task[]
+  tasks    Task[]
+  requests Request[]
 
   @@map("schedules")
 }
@@ -60,10 +65,56 @@ model Task {
   assignedById String
   schedule     Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
   scheduleId   String?
+  request      Request?  @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  requestId    String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  @@index([assignedToId, status])
+  @@index([requestId])
   @@map("tasks")
+}
+
+model Request {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  requesterId String
+  assigneeId  String
+  department  String?
+  scheduleId  String?
+  deadline    DateTime?
+  status      String    @default("PENDING")
+  priority    String    @default("MEDIUM")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  requester User      @relation("RequestRequester", fields: [requesterId], references: [id])
+  assignee  User      @relation("RequestAssignee", fields: [assigneeId], references: [id])
+  schedule  Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  tasks      Task[]
+  activities RequestActivity[]
+
+  @@index([assigneeId, status])
+  @@index([requesterId, status])
+  @@index([deadline])
+  @@map("requests")
+}
+
+model RequestActivity {
+  id        String   @id @default(cuid())
+  requestId String
+  actorId   String
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actor   User    @relation(fields: [actorId], references: [id])
+
+  @@index([requestId, createdAt])
+  @@map("request_activities")
 }
 
 model Meeting {

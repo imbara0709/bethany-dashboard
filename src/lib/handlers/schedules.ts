@@ -67,7 +67,7 @@ export async function GET_schedules(req: NextRequest) {
 }
 
 // ── POST /api/schedules ───────────────────────────────────────────────────────
-const CATEGORIES = ["INFANT", "KINDER", "ELEM1", "ELEM2", "ELEM3", "YOUTH", "MAIN"] as const;
+const CATEGORIES = ["INFANT", "KINDER", "ELEM1", "ELEM2", "ELEM3", "YOUTH", "EDU", "BABY", "WORSHIP_EDU", "MAIN"] as const;
 
 const scheduleSchema = z.object({
   title: z.string().min(1),
@@ -86,7 +86,6 @@ export async function POST_schedules(req: NextRequest) {
   try {
     const user = await requireSession();
     if (!user) return fail("인증이 필요합니다", 401);
-    if (!hasRole(user.role, "DEACON")) return fail("권한이 없습니다", 403);
 
     const body = scheduleSchema.parse(await req.json());
 
@@ -168,8 +167,8 @@ export async function PUT_schedule(
     if (!existing) return fail("일정을 찾을 수 없습니다", 404);
 
     const isCreator = existing.createdById === user.id;
-    const isAdmin = hasRole(user.role, "ADMIN");
-    if (!isCreator && !isAdmin) return fail("권한이 없습니다", 403);
+    const isPastorPlus = hasRole(user.role, "PASTOR");
+    if (!isCreator && !isPastorPlus) return fail("권한이 없습니다", 403);
 
     const body = updateScheduleSchema.parse(await req.json());
 
@@ -227,8 +226,8 @@ export async function DELETE_schedule(
     if (!existing) return fail("일정을 찾을 수 없습니다", 404);
 
     const isCreator = existing.createdById === user.id;
-    const isAdmin = hasRole(user.role, "ADMIN");
-    if (!isCreator && !isAdmin) return fail("권한이 없습니다", 403);
+    const isPastorPlus = hasRole(user.role, "PASTOR");
+    if (!isCreator && !isPastorPlus) return fail("권한이 없습니다", 403);
 
     // Notify task assignees before deletion
     const assigneeIds = [...new Set(existing.tasks.map((t: { assignedToId: string }) => t.assignedToId))];

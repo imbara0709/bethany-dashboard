@@ -23,7 +23,7 @@ const ROLE_BADGE: Record<Role, string> = {
   ADMIN:    "bg-orange-100 text-orange-700",
 };
 
-function MemberForm({ member, onClose }: { member?: User; onClose: () => void }) {
+function MemberForm({ member, onClose, canSetAdmin }: { member?: User; onClose: () => void; canSetAdmin: boolean }) {
   const qc = useQueryClient();
   const isEdit = !!member;
   const [name,     setName]     = useState(member?.name     ?? "");
@@ -32,7 +32,16 @@ function MemberForm({ member, onClose }: { member?: User; onClose: () => void })
   const [role,     setRole]     = useState<Role>((member?.role as Role) ?? "PARTTIME");
   const [team,     setTeam]     = useState(member?.team     ?? "");
   const [phone,    setPhone]    = useState(member?.phone    ?? "");
+  const [avatar,   setAvatar]   = useState<string | null>(member?.avatar ?? null);
   const [error,    setError]    = useState<string | null>(null);
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAvatar(reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
   const createMut = useMutation({
     mutationFn: (body: CreateMemberInput) => membersApi.create(body),
@@ -55,10 +64,10 @@ function MemberForm({ member, onClose }: { member?: User; onClose: () => void })
     e.preventDefault();
     setError(null);
     if (isEdit) {
-      updateMut.mutate({ name, role, team: team || undefined, phone: phone || undefined });
+      updateMut.mutate({ name, role, team: team || undefined, phone: phone || undefined, avatar });
     } else {
       if (!password) { setError("비밀번호를 입력하세요."); return; }
-      createMut.mutate({ name, email, password, role, team: team || undefined, phone: phone || undefined });
+      createMut.mutate({ name, email, password, role, team: team || undefined, phone: phone || undefined, avatar: avatar ?? undefined });
     }
   }
 
@@ -77,6 +86,30 @@ function MemberForm({ member, onClose }: { member?: User; onClose: () => void })
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+
+          {/* 사진 업로드 */}
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#EBF2FE] flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-[#E5E8EB]">
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="프로필" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl font-bold text-[#3182F6]">{name.charAt(0) || "?"}</span>
+              )}
+            </div>
+            <div>
+              <label className="cursor-pointer px-3 py-2 text-sm font-medium border border-[#E5E8EB] rounded-xl hover:bg-[#F7F8FA] text-[#4E5968]">
+                사진 선택
+                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              </label>
+              {avatar && (
+                <button type="button" onClick={() => setAvatar(null)} className="ml-2 text-xs text-red-500 hover:text-red-700">
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-[#191F28] mb-1">이름 *</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
@@ -101,7 +134,7 @@ function MemberForm({ member, onClose }: { member?: User; onClose: () => void })
               <label className="block text-sm font-medium text-[#191F28] mb-1">역할 *</label>
               <select value={role} onChange={(e) => setRole(e.target.value as Role)}
                 className="w-full border border-[#E5E8EB] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3182F6] bg-white">
-                {ROLE_ORDER.map((r) => (
+                {ROLE_ORDER.filter((r) => canSetAdmin || r !== "ADMIN").map((r) => (
                   <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                 ))}
               </select>
@@ -153,8 +186,9 @@ export default function MembersPage() {
   if (status === "loading") return <div className="min-h-screen flex items-center justify-center text-[#8B95A1]">로딩 중...</div>;
   if (!session) redirect("/login");
 
-  const userRole = session.user?.role as Role | undefined;
-  const isAdmin  = userRole ? hasMinRole(userRole, "ADMIN") : false;
+  const userRole      = session.user?.role as Role | undefined;
+  const isAdmin       = userRole === "ADMIN";
+  const isPastorPlus  = userRole ? hasMinRole(userRole, "PASTOR") : false;
 
   const filtered = members.filter(
     (m) => m.name.includes(search) || m.email.includes(search) || (m.team ?? "").includes(search)
@@ -170,7 +204,7 @@ export default function MembersPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <p className="text-[13px] text-[#8B95A1]">활동 중 {members.filter((m) => m.isActive).length}명</p>
-          {isAdmin && (
+          {isPastorPlus && (
             <button onClick={() => { setEditTarget(null); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-[#3182F6] text-white rounded-xl text-sm font-semibold hover:bg-[#1B64DA]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,8 +236,13 @@ export default function MembersPage() {
                     className="bg-white rounded-2xl border border-[#E5E8EB] p-4 hover:shadow-sm hover:border-[#3182F6]/20 transition-all">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#EBF2FE] flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm font-bold text-[#3182F6]">{m.name.charAt(0)}</span>
+                        <div className="w-10 h-10 rounded-full bg-[#EBF2FE] flex items-center justify-center flex-shrink-0 overflow-hidden border border-[#E5E8EB]">
+                          {m.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-bold text-[#3182F6]">{m.name.charAt(0)}</span>
+                          )}
                         </div>
                         <div>
                           <div className="font-semibold text-sm text-[#191F28]">{m.name}</div>
@@ -211,7 +250,7 @@ export default function MembersPage() {
                           {m.team && <div className="text-xs text-[#4E5968] mt-0.5">{m.team}</div>}
                         </div>
                       </div>
-                      {isAdmin && (
+                      {isPastorPlus && m.role !== "ADMIN" && (
                         <button onClick={() => { setEditTarget(m); setShowForm(true); }}
                           className="p-1.5 text-[#B0B8C1] hover:text-[#4E5968] rounded-lg hover:bg-[#F7F8FA]">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,8 +279,12 @@ export default function MembersPage() {
         )}
       </div>
 
-      {showForm && isAdmin && (
-        <MemberForm member={editTarget ?? undefined} onClose={() => { setShowForm(false); setEditTarget(null); }} />
+      {showForm && isPastorPlus && (
+        <MemberForm
+          member={editTarget ?? undefined}
+          canSetAdmin={isAdmin}
+          onClose={() => { setShowForm(false); setEditTarget(null); }}
+        />
       )}
     </Layout>
   );

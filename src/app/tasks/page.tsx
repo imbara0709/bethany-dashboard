@@ -19,11 +19,13 @@ function toYMD(d: Date) {
 const STATUS_DOT: Record<TaskStatus, string> = {
   IN_PROGRESS: "bg-amber-400",
   TODO:        "bg-gray-300",
+  REVIEW:      "bg-indigo-400",
   DONE:        "bg-emerald-400",
 };
 const STATUS_BADGE: Record<TaskStatus, string> = {
   IN_PROGRESS: "bg-amber-100 text-amber-700 border-amber-200",
   TODO:        "bg-gray-100  text-gray-600  border-[#E5E8EB]",
+  REVIEW:      "bg-indigo-100 text-indigo-700 border-indigo-200",
   DONE:        "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
 
@@ -72,7 +74,7 @@ export default function TasksPage() {
       (!filterStatus || t.status === filterStatus) &&
       (!search || t.title.includes(search) || t.assignedTo.name.includes(search))
     ).sort((a, b) => {
-      const order: Record<TaskStatus, number> = { IN_PROGRESS: 0, TODO: 1, DONE: 2 };
+      const order: Record<TaskStatus, number> = { IN_PROGRESS: 0, REVIEW: 1, TODO: 2, DONE: 3 };
       return order[a.status as TaskStatus] - order[b.status as TaskStatus];
     });
 
@@ -80,7 +82,7 @@ export default function TasksPage() {
   const overdueCount  = tasks.filter(isOverdue).length;
 
   const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
-    TODO: "IN_PROGRESS", IN_PROGRESS: "DONE", DONE: "TODO",
+    TODO: "IN_PROGRESS", IN_PROGRESS: "REVIEW", REVIEW: "DONE", DONE: "TODO",
   };
 
   return (
@@ -117,7 +119,7 @@ export default function TasksPage() {
             className={`px-3 py-1 rounded-full text-xs font-medium border ${filterStatus==="" ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-[#E5E8EB]"}`}>
             전체
           </button>
-          {(["IN_PROGRESS","TODO","DONE"] as TaskStatus[]).map((s) => (
+          {(["IN_PROGRESS","REVIEW","TODO","DONE"] as TaskStatus[]).map((s) => (
             <button key={s} onClick={() => setFilterStatus(filterStatus===s ? "" : s)}
               className={`px-3 py-1 rounded-full text-xs font-medium border ${filterStatus===s ? STATUS_BADGE[s] : "bg-white text-gray-600 border-[#E5E8EB]"}`}>
               {TASK_STATUS_LABELS[s]} ({totalByStatus(s)})
@@ -180,6 +182,8 @@ export default function TasksPage() {
                                 ? "bg-emerald-400 border-emerald-400"
                                 : t.status === "IN_PROGRESS"
                                 ? "bg-amber-400 border-amber-400"
+                                : t.status === "REVIEW"
+                                ? "bg-indigo-400 border-indigo-400"
                                 : "bg-white border-gray-300 hover:border-gray-400"
                             }`}
                           />

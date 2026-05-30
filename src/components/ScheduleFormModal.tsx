@@ -6,6 +6,7 @@ import { schedulesApi } from "@/lib/api";
 import {
   Schedule, ScheduleType,
   SCHEDULE_TYPE_LABELS, SCHEDULE_TYPE_COLORS,
+  LOCATION_LIST,
   Role, hasMinRole,
 } from "@/types";
 
@@ -153,9 +154,19 @@ export default function ScheduleFormModal({ schedule, defaultDate, onClose }: Pr
           {/* 장소 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">장소</label>
-            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)}
+            <input
+              type="text"
+              list="location-options"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
               className="w-full border border-[#E5E8EB] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3182F6]"
-              placeholder="장소 (선택)" />
+              placeholder="장소 선택 또는 직접 입력"
+            />
+            <datalist id="location-options">
+              {LOCATION_LIST.map((loc) => (
+                <option key={loc} value={loc} />
+              ))}
+            </datalist>
           </div>
 
           {/* 메모 */}

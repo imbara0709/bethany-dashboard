@@ -22,6 +22,8 @@ const taskSelect = {
   assignedTo: { select: { id: true, name: true } },
   assignedBy: { select: { id: true, name: true } },
   schedule: { select: { id: true, title: true, date: true } },
+  request: { select: { id: true, title: true } },
+  requestId: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -35,18 +37,23 @@ export async function GET_tasks(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const status = searchParams.get("status") ?? undefined;
     const scheduleId = searchParams.get("scheduleId") ?? undefined;
+    const fromRequest = searchParams.get("fromRequest");
 
-    // MEMBER can only see their own tasks
-    const isDeaconPlus = hasRole(user.role, "DEACON");
-    const assignedToFilter = isDeaconPlus
-      ? searchParams.get("mine") === "true"
-        ? { assignedToId: user.id }
-        : {}
-      : { assignedToId: user.id };
+    // mine=true → 본인 업무만, 그 외 → 전체 조회 (모든 사역자 허용)
+    const assignedToFilter =
+      searchParams.get("mine") === "true" ? { assignedToId: user.id } : {};
+
+    const requestFilter =
+      fromRequest === "true"
+        ? { requestId: { not: null } }
+        : fromRequest === "false"
+        ? { requestId: null }
+        : {};
 
     const tasks = await prisma.task.findMany({
       where: {
         ...assignedToFilter,
+        ...requestFilter,
         ...(status ? { status: status as any } : {}),
         ...(scheduleId ? { scheduleId } : {}),
       },
@@ -84,7 +91,6 @@ export async function POST_tasks(req: NextRequest) {
   try {
     const user = await requireSession();
     if (!user) return fail("인증이 필요합니다", 401);
-    if (!hasRole(user.role, "DEACON")) return fail("권한이 없습니다", 403);
 
     const body = createTaskSchema.parse(await req.json());
 
@@ -143,8 +149,8 @@ export async function GET_task(
     });
     if (!task) return fail("업무를 찾을 수 없습니다", 404);
 
-    // MEMBER can only see own tasks
-    if (!hasRole(user.role, "DEACON") && task.assignedTo.id !== user.id) {
+    // 본인 업무가 아니면 PASTOR 이상만 조회 가능
+    if (task.assignedTo.id !== user.id && !hasRole(user.role, "PASTOR")) {
       return fail("권한이 없습니다", 403);
     }
 
@@ -167,7 +173,7 @@ export async function GET_task(
 const patchTaskSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
+  status: z.enum(["TODO", "IN_PROGRESS", "REVIEW", "DONE"]).optional(),
   assignedToId: z.string().min(1).optional(),
   scheduleId: z.string().nullable().optional(),
   deadline: z.string().datetime().nullable().optional(),
@@ -187,17 +193,20 @@ export async function PATCH_task(
     });
     if (!task) return fail("업무를 찾을 수 없습니다", 404);
 
-    const isAssignee = task.assignedToId === user.id;
-    const isDeaconPlus = hasRole(user.role, "DEACON");
-    if (!isAssignee && !isDeaconPlus) return fail("권한이 없습니다", 403);
+    const isAssignee  = task.assignedToId === user.id;
+    const isAssigner  = task.assignedById === user.id;
+    const isPastorPlus = hasRole(user.role, "PASTOR");
+    const canFullEdit  = isAssigner || isPastorPlus;
+
+    if (!isAssignee && !canFullEdit) return fail("권한이 없습니다", 403);
 
     const body = patchTaskSchema.parse(await req.json());
 
-    // Assignee (MEMBER) can only change status
+    // assignee: status만 변경, 배분자/PASTOR+: 전체 변경
     const updateData: Record<string, unknown> = {};
     if (body.status !== undefined) updateData.status = body.status;
 
-    if (isDeaconPlus) {
+    if (canFullEdit) {
       if (body.title !== undefined) updateData.title = body.title;
       if (body.description !== undefined)
         updateData.description = body.description;
@@ -215,7 +224,7 @@ export async function PATCH_task(
     });
 
     // Notify new assignee if reassigned
-    if (isDeaconPlus && body.assignedToId && body.assignedToId !== task.assignedToId) {
+    if (canFullEdit && body.assignedToId && body.assignedToId !== task.assignedToId) {
       await createNotification(
         body.assignedToId,
         `업무 "${updated.title}"이 배정되었습니다.`
@@ -245,7 +254,6 @@ export async function DELETE_task(
   try {
     const user = await requireSession();
     if (!user) return fail("인증이 필요합니다", 401);
-    if (!hasRole(user.role, "DEACON")) return fail("권한이 없습니다", 403);
 
     const task = await prisma.task.findUnique({
       where: { id: params.id },
@@ -254,8 +262,8 @@ export async function DELETE_task(
     if (!task) return fail("업무를 찾을 수 없습니다", 404);
 
     const isCreator = task.assignedById === user.id;
-    const isAdmin = hasRole(user.role, "ADMIN");
-    if (!isCreator && !isAdmin) return fail("권한이 없습니다", 403);
+    const isPastorPlus = hasRole(user.role, "PASTOR");
+    if (!isCreator && !isPastorPlus) return fail("권한이 없습니다", 403);
 
     await prisma.task.delete({ where: { id: params.id } });
 

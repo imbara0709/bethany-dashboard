@@ -15,18 +15,20 @@ import TaskFormModal from "@/components/TaskFormModal";
 
 type Tab = "mine" | "team";
 
-const STATUS_COLUMNS: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
+const STATUS_COLUMNS: TaskStatus[] = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 
 const STATUS_COLUMN_COLOR: Record<TaskStatus, string> = {
-  TODO: "bg-gray-50 border-[#E5E8EB]",
+  TODO:        "bg-gray-50 border-[#E5E8EB]",
   IN_PROGRESS: "bg-[#EBF2FE] border-blue-200",
-  DONE: "bg-green-50 border-green-200",
+  REVIEW:      "bg-indigo-50 border-indigo-200",
+  DONE:        "bg-green-50 border-green-200",
 };
 
 const STATUS_HEADER_COLOR: Record<TaskStatus, string> = {
-  TODO: "text-gray-600",
+  TODO:        "text-gray-600",
   IN_PROGRESS: "text-[#3182F6]",
-  DONE: "text-green-600",
+  REVIEW:      "text-indigo-600",
+  DONE:        "text-green-600",
 };
 
 function isOverdue(task: Task): boolean {
@@ -78,9 +80,16 @@ function TaskCard({
       onClick={() => canEdit && onEdit(task)}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className={`text-sm font-medium leading-snug ${overdue ? "text-red-800" : "text-gray-800"}`}>
-          {task.title}
-        </p>
+        <div className="min-w-0">
+          {task.requestId && (
+            <span className="inline-block text-[10px] px-1.5 py-0.5 bg-[#EBF2FE] text-[#3182F6] rounded-full font-medium mb-1">
+              요청
+            </span>
+          )}
+          <p className={`text-sm font-medium leading-snug ${overdue ? "text-red-800" : "text-gray-800"}`}>
+            {task.title}
+          </p>
+        </div>
         {overdue && (
           <span className="flex-shrink-0 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full">
             기한초과
@@ -120,8 +129,8 @@ export default function TasksPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role as Role | undefined;
   const currentUserId = session?.user?.id as string | undefined;
-  const canCreate = userRole ? hasMinRole(userRole, "DEACON") : false;
-  const canViewTeam = userRole ? hasMinRole(userRole, "DEACON") : false;
+  const canCreate   = !!userRole;
+  const canViewTeam = !!userRole;
 
   const qc = useQueryClient();
 

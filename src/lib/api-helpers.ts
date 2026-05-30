@@ -43,18 +43,23 @@ export async function requireSession() {
     id: string;
     name: string;
     email: string;
-    role: "MEMBER" | "DEACON" | "PASTOR" | "ADMIN";
+    role: string;
     team: string | null;
   };
 }
 
-const ROLE_RANK = { MEMBER: 0, DEACON: 1, PASTOR: 2, ADMIN: 3 } as const;
+const ROLE_RANK: Record<string, number> = {
+  MEMBER:   0,
+  PARTTIME: 0,
+  FULLTIME: 1,
+  TRAINEE:  2,
+  DEACON:   2,
+  PASTOR:   3,
+  ADMIN:    4,
+};
 
-export function hasRole(
-  userRole: "MEMBER" | "DEACON" | "PASTOR" | "ADMIN",
-  required: "MEMBER" | "DEACON" | "PASTOR" | "ADMIN"
-): boolean {
-  return ROLE_RANK[userRole] >= ROLE_RANK[required];
+export function hasRole(userRole: string, required: string): boolean {
+  return (ROLE_RANK[userRole] ?? -1) >= (ROLE_RANK[required] ?? 0);
 }
 
 export async function createNotification(userId: string, message: string) {
@@ -68,6 +73,7 @@ export const userSelect = {
   phone: true,
   role: true,
   team: true,
+  avatar: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,

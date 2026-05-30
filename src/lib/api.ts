@@ -13,6 +13,16 @@ import {
   GetSchedulesParams,
   GetTasksParams,
   GetMembersParams,
+  RequestSummary,
+  RequestDetail,
+  RequestActivity,
+  RequestStatus,
+  GetRequestsParams,
+  CreateRequestInput,
+  UpdateRequestInput,
+  CreateRequestBulkResponse,
+  AcceptRequestResponse,
+  HomeSummary,
 } from "@/types";
 
 async function request<T>(
@@ -81,6 +91,7 @@ export const tasksApi = {
     if (params.scheduleId) q.set("scheduleId", params.scheduleId);
     if (params.status) q.set("status", params.status);
     if (params.mine) q.set("mine", "true");
+    if (params.fromRequest !== undefined) q.set("fromRequest", String(params.fromRequest));
     const qs = q.toString();
     return request<Task[]>(`/api/tasks${qs ? `?${qs}` : ""}`);
   },
@@ -97,6 +108,62 @@ export const tasksApi = {
     }),
   delete: (id: string) =>
     request<{ id: string }>(`/api/tasks/${id}`, { method: "DELETE" }),
+};
+
+// Requests API
+export const requestsApi = {
+  list: (params: GetRequestsParams = {}) => {
+    const q = new URLSearchParams();
+    if (params.tab) q.set("tab", params.tab);
+    if (params.status) q.set("status", params.status);
+    if (params.department) q.set("department", params.department);
+    if (params.search) q.set("search", params.search);
+    const qs = q.toString();
+    return request<RequestSummary[]>(`/api/requests${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: string) => request<RequestDetail>(`/api/requests/${id}`),
+  create: (body: CreateRequestInput) =>
+    request<RequestSummary | CreateRequestBulkResponse>("/api/requests", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: UpdateRequestInput) =>
+    request<RequestSummary>(`/api/requests/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  delete: (id: string) =>
+    request<{ id: string }>(`/api/requests/${id}`, { method: "DELETE" }),
+  accept: (id: string) =>
+    request<AcceptRequestResponse>(`/api/requests/${id}/accept`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  hold: (id: string, reason?: string) =>
+    request<RequestSummary>(`/api/requests/${id}/hold`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+  reject: (id: string, reason: string) =>
+    request<RequestSummary>(`/api/requests/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  changeStatus: (id: string, to: RequestStatus) =>
+    request<RequestSummary>(`/api/requests/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ to }),
+    }),
+  comment: (id: string, text: string) =>
+    request<RequestActivity>(`/api/requests/${id}/comment`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+};
+
+// Home API
+export const homeApi = {
+  summary: () => request<HomeSummary>("/api/home/summary"),
 };
 
 // Notifications API

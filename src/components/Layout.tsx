@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 import NotificationDropdown from "@/components/Notifications";
+import { homeApi } from "@/lib/api";
 import { Role, ROLE_LABELS, hasMinRole } from "@/types";
 
 interface NavItem {
@@ -12,15 +14,26 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   minRole?: Role;
+  badgeKey?: "pendingRequest";
 }
 
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
-    label: "주간 현황",
+    label: "홈",
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" />
+      </svg>
+    ),
+  },
+  {
+    href: "/requests",
+    label: "요청함",
+    badgeKey: "pendingRequest",
+    icon: (
+      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     ),
   },
@@ -63,7 +76,8 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard":      "주간 현황",
+  "/dashboard":      "홈",
+  "/requests":       "요청함",
   "/tasks":          "업무 현황",
   "/members":        "사역자",
   "/meeting-notes":  "회의록",
@@ -74,6 +88,14 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const userRole = session?.user?.role as Role | undefined;
+
+  const { data: summary } = useQuery({
+    queryKey: ["home", "summary"],
+    queryFn: async () => (await homeApi.summary()).data,
+    enabled: !!session,
+    refetchInterval: 60_000,
+  });
+  const pendingCount = summary?.pendingRequestCount ?? 0;
 
   return (
     <nav className="flex flex-col h-full bg-white">
@@ -127,8 +149,13 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                 <span className={`flex-shrink-0 ${isActive ? "text-[#3182F6]" : "text-[#B0B8C1]"}`}>
                   {item.icon}
                 </span>
-                {item.label}
-                {isActive && (
+                <span className="flex-1">{item.label}</span>
+                {item.badgeKey === "pendingRequest" && pendingCount > 0 && (
+                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#FF6B35] text-white text-[11px] font-bold">
+                    {pendingCount > 99 ? "99+" : pendingCount}
+                  </span>
+                )}
+                {isActive && !(item.badgeKey === "pendingRequest" && pendingCount > 0) && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3182F6]" />
                 )}
               </Link>
