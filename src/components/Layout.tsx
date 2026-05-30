@@ -42,12 +42,32 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+  {
+    href: "/meeting-notes",
+    label: "회의록",
+    icon: (
+      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/shortcuts",
+    label: "바로가기",
+    icon: (
+      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.828 10.172a4 4 0 015.656 0l1.415 1.414a4 4 0 010 5.657l-2.829 2.828a4 4 0 01-5.656 0l-1.415-1.414M10.172 13.828a4 4 0 01-5.656 0L3.1 12.414a4 4 0 010-5.657l2.829-2.828a4 4 0 015.656 0l1.415 1.414" />
+      </svg>
+    ),
+  },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "주간 현황",
-  "/tasks":     "업무 현황",
-  "/members":   "사역자",
+  "/dashboard":      "주간 현황",
+  "/tasks":          "업무 현황",
+  "/members":        "사역자",
+  "/meeting-notes":  "회의록",
+  "/shortcuts":      "바로가기",
 };
 
 function Sidebar({ onClose }: { onClose?: () => void }) {

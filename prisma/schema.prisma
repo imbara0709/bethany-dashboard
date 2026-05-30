@@ -65,6 +65,33 @@ model Task {
   @@map("tasks")
 }
 
+model Meeting {
+  id          String   @id @default(cuid())
+  title       String
+  date        DateTime
+  content     String
+  department  String?
+  createdBy   User     @relation("MeetingCreator", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("meetings")
+}
+
+model Shortcut {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  description String?
+  color       String   @default("blue")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shortcuts")
+}
+
 model Notification {
   id        String   @id @default(cuid())
   message   String
